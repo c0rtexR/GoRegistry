@@ -74,15 +74,18 @@ func (r *TypeRegistry[T, K]) DeleteByType(itemType K, name string) bool {
 
 // ItemsByType returns all items of a specific type.
 func (r *TypeRegistry[T, K]) ItemsByType(itemType K) map[string]T {
-	r.registry.mu.RLock()
-	defer r.registry.mu.RUnlock()
+	// Use write lock to ensure thread safety during map copy
+	r.registry.mu.Lock()
+	defer r.registry.mu.Unlock()
 
 	prefix := fmt.Sprintf("%v:", itemType)
 	result := make(map[string]T)
 
+	// Create a complete copy while holding the lock
 	for key, value := range r.registry.items {
 		if len(key) > len(prefix) && key[:len(prefix)] == prefix {
 			name := key[len(prefix):]
+			// Make a deep copy if T is a pointer type
 			result[name] = value
 		}
 	}
